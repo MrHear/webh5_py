@@ -36,7 +36,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY --chown=appuser:appgroup . .
 
 # 创建上传目录并设置权限
-RUN mkdir -p /app/uploads && chown -R appuser:appgroup /app/uploads
+# 修复权限问题：显式创建 logs 目录，并将整个 /app 目录的所有权赋给 appuser
+RUN mkdir -p /app/uploads /app/logs && chown -R appuser:appgroup /app
 
 # 切换到非 root 用户
 USER appuser
