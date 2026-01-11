@@ -34,29 +34,32 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          # 停止并删除旧容器 (如果存在)
+          # 1. 停止清理旧容器
           docker stop onespace-backend || true
           docker rm onespace-backend || true
           
-          # 强制拉取最新镜像
+          # 2. 拉取新镜像
           docker pull ${{ secrets.DOCKER_USERNAME }}/onespace-backend:latest
           
-          # 启动新容器
-          # 注意: 敏感信息通过环境变量传递，不硬编码在脚本中
+          # 3. 💥 关键修复：确保宿主机挂载目录存在，且权限开放
+          # 1000 通常是容器内 appuser 的 UID，或者直接用 777 简单粗暴解决
+          mkdir -p /opt/onespace/uploads
+          chmod 777 /opt/onespace/uploads
+          
+          # 4. 启动容器
           docker run -d \
             --name onespace-backend \
-            --network onespace-network \
             -p 8000:8000 \
             -v /opt/onespace/uploads:/app/uploads \
-            -e DB_HOST=${{ secrets.DB_HOST }} \
-            -e DB_PORT=${{ secrets.DB_PORT }} \
-            -e DB_USER=${{ secrets.DB_USER }} \
-            -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            -e DB_NAME=${{ secrets.DB_NAME }} \
-            -e JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} \
-            -e ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }} \
+            -e DB_HOST='172.17.0.1' \
+            -e DB_PORT='3306' \
+            -e DB_USER='root' \
+            -e DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e DB_NAME='${{ secrets.DB_NAME }}' \
+            -e JWT_SECRET_KEY='${{ secrets.JWT_SECRET_KEY }}' \
+            -e ADMIN_USERNAME='${{ secrets.ADMIN_USERNAME }}' \
             -e ADMIN_PASSWORD_HASH='${{ secrets.ADMIN_PASSWORD_HASH }}' \
-            -e CORS_ORIGINS='${{ secrets.CORS_ORIGINS }}' \
+            -e CORS_ORIGINS='["*"]' \
             --restart=always \
             ${{ secrets.DOCKER_USERNAME }}/onespace-backend:latest
           
