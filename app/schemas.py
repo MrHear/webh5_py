@@ -179,3 +179,68 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+
+
+# ============== 评论相关模式 ==============
+
+class ReplyTo(BaseModel):
+    """被回复的评论简要信息"""
+    id: str
+    author: str
+    content: str
+
+
+class CommentCreate(BaseModel):
+    """创建评论请求"""
+    postId: str = Field(..., description="文章ID")
+    content: str = Field(..., min_length=1, max_length=1000, description="评论内容")
+    author: Optional[str] = Field(None, max_length=50, description="昵称(可选)")
+    replyToId: Optional[str] = Field(None, description="被回复的评论ID(可选)")
+    
+    @field_validator("content")
+    @classmethod
+    def sanitize_content(cls, v: str) -> str:
+        """清理评论内容，防止XSS"""
+        return bleach.clean(v.strip(), tags=[], strip=True)
+    
+    @field_validator("author")
+    @classmethod
+    def sanitize_author(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        cleaned = bleach.clean(v.strip(), tags=[], strip=True)
+        return cleaned if cleaned else None
+
+
+class CommentInList(BaseModel):
+    """评论列表项"""
+    id: str
+    postId: str
+    content: str
+    author: str
+    createdAt: datetime
+    isGuest: bool
+    likes: int
+    isLiked: bool = False  # 当前用户是否点赞
+    replyTo: Optional[ReplyTo] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CommentCreateResponse(BaseModel):
+    """创建评论响应"""
+    id: str
+    postId: str
+    content: str
+    author: str
+    createdAt: datetime
+    isGuest: bool
+    likes: int
+    isLiked: bool = False
+    replyTo: Optional[ReplyTo] = None
+
+
+class LikeResponse(BaseModel):
+    """点赞响应"""
+    isLiked: bool
+    likes: int

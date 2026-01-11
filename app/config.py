@@ -5,6 +5,7 @@
 import os
 from functools import lru_cache
 from typing import List
+from urllib.parse import quote
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
@@ -40,7 +41,27 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = 10
     
     # Redis配置
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_PASSWORD: str = ""  # 为空表示无密码
+    REDIS_DB: int = 0
+    
+    @property
+    def REDIS_URL(self) -> str:
+        """构建 Redis 连接 URL（密码会自动 URL 编码，支持 #@: 等特殊字符）"""
+        if self.REDIS_PASSWORD:
+            # URL 编码密码，处理 # @ : 等特殊字符
+            encoded_password = quote(self.REDIS_PASSWORD, safe='')
+            return f"redis://:{encoded_password}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+    
+    # DeepSeek API配置 (用于内容审核)
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_API_URL: str = "https://api.deepseek.com/v1/chat/completions"
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+    MODERATION_ENABLED: bool = True  # 是否启用内容审核
+    MODERATION_TIMEOUT: int = 10  # 审核超时时间(秒)
+    MODERATION_DAILY_LIMIT: int = 500  # 每日最大AI审核次数
     
     # 运行模式
     DEBUG: bool = False

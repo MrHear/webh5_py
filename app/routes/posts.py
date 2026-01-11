@@ -30,6 +30,7 @@ async def get_posts(
     page: int = Query(1, ge=1, le=1000, description="页码"),
     limit: int = Query(10, ge=1, le=100, description="每页数量"),
     type: Optional[PostType] = Query(None, description="文章类型筛选"),
+    keyword: Optional[str] = Query(None, max_length=100, description="搜索关键词"),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -37,6 +38,7 @@ async def get_posts(
     
     - 支持分页
     - 支持按类型筛选
+    - 支持关键词搜索（标题和摘要）
     - 返回摘要信息，不含正文
     """
     # 构建基础查询
@@ -45,6 +47,15 @@ async def get_posts(
     # 类型筛选
     if type:
         base_query = base_query.where(Post.type == type.value)
+    
+    # 关键词搜索
+    if keyword:
+        keyword = keyword.strip()
+        if keyword:
+            search_pattern = f"%{keyword}%"
+            base_query = base_query.where(
+                Post.title.like(search_pattern) | Post.summary.like(search_pattern)
+            )
     
     # 查询总数
     count_query = select(func.count()).select_from(base_query.subquery())

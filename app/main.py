@@ -15,7 +15,7 @@ from loguru import logger
 from app.config import get_settings
 from app.middleware import setup_middlewares
 from app.rate_limiter import setup_rate_limiter
-from app.routes import posts, auth, upload
+from app.routes import posts, auth, upload, comments
 
 # 配置日志
 settings = get_settings()
@@ -111,6 +111,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(posts.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(upload.router, prefix="/api/v1")
+app.include_router(comments.router, prefix="/api/v1")
 
 
 # ============== 健康检查 ==============

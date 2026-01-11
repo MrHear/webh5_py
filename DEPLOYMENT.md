@@ -24,6 +24,8 @@
 | `ADMIN_USERNAME` | 管理员用户名 | `admin` |
 | `ADMIN_PASSWORD_HASH` | 管理员密码哈希 ⚠️ | 见下方生成方法 |
 | `CORS_ORIGINS` | 允许的前端域名 | `["https://yourdomain.com"]` |
+| `DEEPSEEK_API_KEY` | DeepSeek API 密钥 (可选) | `sk-xxxxxxxx` |
+| `MODERATION_ENABLED` | 是否启用内容审核 | `true` |
 
 ### 生成安全密钥
 
@@ -164,10 +166,39 @@ docker image prune -a
 
 ---
 
+## 💬 评论内容审核配置
+
+系统支持使用 DeepSeek API 对游客评论进行异步文明检测。
+
+### 配置说明
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `DEEPSEEK_API_KEY` | DeepSeek API 密钥 | 空 (不审核) |
+| `DEEPSEEK_API_URL` | API 地址 | `https://api.deepseek.com/v1/chat/completions` |
+| `DEEPSEEK_MODEL` | 模型名称 | `deepseek-chat` |
+| `MODERATION_ENABLED` | 是否启用审核 | `true` |
+| `MODERATION_TIMEOUT` | 超时时间(秒) | `10` |
+
+### 获取 API Key
+
+1. 访问 [DeepSeek 开放平台](https://platform.deepseek.com/)
+2. 注册并登录
+3. 创建 API Key
+4. 将 Key 添加到 `.env` 或 GitHub Secrets
+
+### 审核机制
+
+- **异步审核**: 评论先发布，后台异步检测
+- **自动隐藏**: 违规评论自动标记为 `rejected`，不会显示
+- **容错处理**: API 超时或失败时，评论默认通过
+
+---
+
 ## ⚠️ 安全提醒
 
 1. **绝不要**将 `.env` 文件提交到 Git
-2. **绝不要**在代码中硬编码密码
+2. **绝不要**在代码中硬编码密码和 API Key
 3. 定期更换 JWT 密钥和管理员密码
 4. 使用强密码 (16位以上，包含大小写、数字、特殊字符)
 5. 生产环境关闭 DEBUG 模式

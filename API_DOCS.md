@@ -4,9 +4,9 @@
 
 ## 1. 基础说明
 
-- **Base URL**: `/api/v1` (建议)
+- **Base URL**: `/api/v1`
 - **Content-Type**: `application/json`
-- **时间格式**: ISO 8601 (YYYY-MM-DD 或 YYYY-MM-DDTHH:mm:ss.sssZ)
+- **时间格式**: ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ)
 
 ---
 
@@ -25,6 +25,20 @@
 | `views` | number | 阅读量 | `1024` |
 | `createdAt` | string | 创建时间 | `"2026-01-10"` |
 
+### Comment (评论)
+
+| 字段名 | 类型 | 说明 | 示例 |
+| :--- | :--- | :--- | :--- |
+| `id` | string | 评论唯一标识 (UUID) | `"c1"` |
+| `postId` | string | 关联文章ID | `"p1"` |
+| `content` | string | 评论内容 | `"写得很好！"` |
+| `author` | string | 评论者昵称 | `"访客A"` |
+| `isGuest` | boolean | 是否游客评论 | `true` |
+| `likes` | number | 点赞数 | `5` |
+| `isLiked` | boolean | 当前用户是否已点赞 | `false` |
+| `createdAt` | string | 创建时间 | `"2026-01-11T12:30:00Z"` |
+| `replyTo` | object | 被回复的评论信息 (可选) | `{ id, author, content }` |
+
 ---
 
 ## 3. 接口定义 (Endpoints)
@@ -39,6 +53,7 @@
     - `page`: number (页码，默认 1)
     - `limit`: number (每页数量，默认 10)
     - `type`: string (筛选类型: 'markdown' | 'richtext')
+    - `keyword`: string (搜索关键词，可选)
 
 **响应示例 (200 OK):**
 
@@ -59,7 +74,6 @@
         "createdAt": "2077-09-12",
         "views": 1240
       }
-      // ... 注意：列表中通常不返回 content 以减少流量
     ]
   }
 }
@@ -90,19 +104,20 @@
     "type": "markdown",
     "tags": ["技术", "赛博义体"],
     "createdAt": "2077-09-12",
-    "views": 1241 // 后端可在获取详情时自动增加阅读量
+    "views": 1241
   }
 }
 ```
 
 ---
 
-### 3.3 创建新文章
+### 3.3 创建新文章 (Auth)
 
 发布一篇新的 Markdown 或富文本文章。
 
 - **URL**: `/posts`
 - **Method**: `POST`
+- **Headers**: `Authorization: Bearer <token>`
 - **Request Body**:
 
 | 字段名 | 类型 | 必填 | 说明 |
@@ -140,21 +155,219 @@
 
 ---
 
-### 3.4 (预留) 图片上传
+### 3.4 更新文章 (Auth)
+
+更新已有文章。
+
+- **URL**: `/posts/{id}`
+- **Method**: `PUT`
+- **Headers**: `Authorization: Bearer <token>`
+- **Request Body**: 同创建文章 (字段均为可选)
+
+**响应示例 (200 OK):**
+
+```json
+{
+  "code": 200,
+  "message": "文章更新成功",
+  "data": {
+    "id": "1",
+    "title": "更新后的标题",
+    "summary": "...",
+    "content": "...",
+    "type": "markdown",
+    "tags": ["技术"],
+    "views": 100,
+    "createdAt": "2026-01-10T12:00:00Z"
+  }
+}
+```
+
+---
+
+### 3.5 删除文章 (Auth)
+
+删除文章（软删除）。
+
+- **URL**: `/posts/{id}`
+- **Method**: `DELETE`
+- **Headers**: `Authorization: Bearer <token>`
+
+**响应示例 (200 OK):**
+
+```json
+{
+  "code": 200,
+  "message": "文章删除成功",
+  "data": null
+}
+```
+
+---
+
+## 4. 评论 (Comments)
+
+### 4.1 获取文章评论
+
+获取指定文章的评论列表。
+
+- **URL**: `/comments`
+- **Method**: `GET`
+- **Query Parameters**:
+    - `postId`: string (文章ID，必填)
+    - `sort`: string (排序方式: `time` | `likes`，默认 `time`)
+
+**响应示例 (200 OK):**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": "c1",
+      "postId": "p1",
+      "content": "评论内容",
+      "author": "访客A",
+      "createdAt": "2026-01-11T12:30:00Z",
+      "isGuest": true,
+      "likes": 5,
+      "isLiked": false,
+      "replyTo": {
+        "id": "c0",
+        "author": "访客B",
+        "content": "原评论内容..."
+      }
+    }
+  ]
+}
+```
+
+---
+
+### 4.2 发表评论
+
+发表新评论或回复评论。
+
+- **URL**: `/comments`
+- **Method**: `POST`
+- **Request Body**:
+
+| 字段名 | 类型 | 必填 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `postId` | string | 是 | 文章ID |
+| `content` | string | 是 | 评论内容 (最多1000字) |
+| `author` | string | 否 | 昵称 (默认"匿名访客") |
+| `replyToId` | string | 否 | 被回复的评论ID |
+
+**请求示例:**
+
+```json
+{
+  "postId": "文章ID",
+  "content": "评论内容",
+  "author": "昵称",
+  "replyToId": "被回复的评论ID"
+}
+```
+
+**响应示例 (201 Created):**
+
+```json
+{
+  "code": 201,
+  "message": "评论发表成功",
+  "data": {
+    "id": "new_id",
+    "postId": "p1",
+    "content": "评论内容",
+    "author": "昵称",
+    "createdAt": "2026-01-11T12:30:00Z",
+    "isGuest": true,
+    "likes": 0,
+    "isLiked": false,
+    "replyTo": null
+  }
+}
+```
+
+---
+
+### 4.3 点赞评论
+
+点赞或取消点赞评论（基于IP判断）。
+
+- **URL**: `/comments/{id}/like`
+- **Method**: `POST`
+- **Request Body**: `{}` (空)
+
+**响应示例 (200 OK):**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "isLiked": true,
+    "likes": 6
+  }
+}
+```
+
+---
+
+## 5. 系统 & 文件
+
+### 5.1 登录
+
+管理员登录获取Token。
+
+- **URL**: `/auth/login`
+- **Method**: `POST`
+- **Request Body**:
+
+```json
+{
+  "username": "admin",
+  "password": "password"
+}
+```
+
+**响应示例 (200 OK):**
+
+```json
+{
+  "code": 200,
+  "message": "登录成功",
+  "data": {
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token_type": "bearer",
+    "expires_in": 86400
+  }
+}
+```
+
+---
+
+### 5.2 文件上传 (Auth)
 
 用于编辑器中上传图片。
 
 - **URL**: `/upload`
 - **Method**: `POST`
-- **Request Body**: `FormData` (file)
+- **Headers**: `Authorization: Bearer <token>`
+- **Content-Type**: `multipart/form-data`
+- **Request Body**: `file` (Binary)
 
-**响应示例:**
+**响应示例 (200 OK):**
 
 ```json
 {
   "code": 200,
+  "message": "上传成功",
   "data": {
-    "url": "https://api.onespace.com/uploads/image-123.jpg"
+    "url": "https://api.onespace.com/uploads/image-123.jpg",
+    "filename": "image.png"
   }
 }
 ```

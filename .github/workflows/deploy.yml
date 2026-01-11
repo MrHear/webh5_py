@@ -60,6 +60,12 @@ jobs:
             -e ADMIN_USERNAME='${{ secrets.ADMIN_USERNAME }}' \
             -e ADMIN_PASSWORD_HASH='${{ secrets.ADMIN_PASSWORD_HASH }}' \
             -e CORS_ORIGINS='["*"]' \
+            -e REDIS_HOST='172.17.0.1' \
+            -e REDIS_PORT='6379' \
+            -e REDIS_PASSWORD='${{ secrets.REDIS_PASSWORD }}' \
+            -e REDIS_DB='1' \
+            -e DEEPSEEK_API_KEY='${{ secrets.DEEPSEEK_API_KEY }}' \
+            -e MODERATION_ENABLED='${{ secrets.MODERATION_ENABLED }}' \
             --restart=always \
             ${{ secrets.DOCKER_USERNAME }}/onespace-backend:latest
           
