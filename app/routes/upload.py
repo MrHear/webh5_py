@@ -16,6 +16,7 @@ from app.config import get_settings
 from app.schemas import ApiResponse
 from app.security import require_admin
 from app.rate_limiter import limiter
+from app.utils import now_beijing
 
 settings = get_settings()
 router = APIRouter(prefix="/upload", tags=["文件上传"])
@@ -115,9 +116,8 @@ async def upload_file(
     upload_dir = Path(settings.UPLOAD_DIR)
     upload_dir.mkdir(parents=True, exist_ok=True)
     
-    # 按日期组织文件
-    from datetime import datetime
-    date_dir = datetime.now().strftime("%Y/%m")
+    # 按日期组织文件（使用北京时间）
+    date_dir = now_beijing().strftime("%Y/%m")
     file_dir = upload_dir / date_dir
     file_dir.mkdir(parents=True, exist_ok=True)
     

@@ -1,9 +1,8 @@
 """
-文章路由模块1
+文章路由模块
 处理所有文章相关的API请求
 """
 import uuid
-from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
@@ -19,6 +18,7 @@ from app.schemas import (
 )
 from app.security import require_admin
 from app.rate_limiter import limiter
+from app.utils import now_beijing
 
 router = APIRouter(prefix="/posts", tags=["文章"])
 
@@ -176,7 +176,7 @@ async def create_post(
         type=post_data.type.value,
         tags=post_data.tags,
         views=0,
-        created_at=datetime.now()
+        created_at=now_beijing()
     )
     
     db.add(new_post)

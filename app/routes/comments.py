@@ -1,9 +1,8 @@
 """
-评论路由模块1
+评论路由模块
 处理所有评论相关的API请求
 """
 import uuid
-from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
@@ -17,9 +16,10 @@ from app.schemas import (
     CommentCreate, CommentInList, CommentCreateResponse,
     LikeResponse, ApiResponse, ReplyTo
 )
-from app.security import get_client_ip
+from app.security import get_client_ip, require_admin
 from app.rate_limiter import limiter
 from app.moderation import trigger_moderation
+from app.utils import now_beijing
 
 router = APIRouter(prefix="/comments", tags=["评论"])
 
@@ -194,7 +194,7 @@ async def create_comment(
         is_guest=True,
         reply_to_id=comment_data.replyToId,
         likes=0,
-        created_at=datetime.now()
+        created_at=now_beijing()
     )
     
     db.add(new_comment)
@@ -287,7 +287,7 @@ async def toggle_like_comment(
             id=str(uuid.uuid4()),
             comment_id=comment_id,
             client_ip=client_ip,
-            created_at=datetime.now()
+            created_at=now_beijing()
         )
         db.add(new_like)
         new_likes = comment.likes + 1
@@ -307,4 +307,51 @@ async def toggle_like_comment(
             isLiked=is_liked,
             likes=new_likes
         )
+    )
+
+
+@router.delete("/{comment_id}", response_model=ApiResponse)
+@limiter.limit("30/minute")
+async def delete_comment(
+    request: Request,
+    comment_id: str,
+    db: AsyncSession = Depends(get_db),
+    admin: str = Depends(require_admin)
+):
+    """
+    删除评论（软删除）
+    
+    - 需要管理员权限
+    - 使用软删除，数据不会真正删除
+    """
+    # 验证UUID格式
+    try:
+        uuid.UUID(comment_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="无效的评论ID格式"
+        )
+    
+    # 查询评论是否存在
+    comment_query = select(Comment).where(Comment.id == comment_id, Comment.is_deleted == False)
+    comment_result = await db.execute(comment_query)
+    comment = comment_result.scalar_one_or_none()
+    
+    if not comment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="评论不存在"
+        )
+    
+    # 软删除
+    comment.is_deleted = True
+    await db.commit()
+    
+    logger.info(f"管理员 {admin} 删除了评论: {comment_id}")
+    
+    return ApiResponse(
+        code=200,
+        message="评论删除成功",
+        data=None
     )
