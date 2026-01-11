@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# 虚拟环境
+venv/
+env/
+.venv/
+ENV/
+
+# IDE 配置
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 敏感文件 - 绝对不要包含到镜像中
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# 日志
+logs/
+*.log
+
+# 上传目录
+uploads/
+
+# 测试
+tests/
+test_*.py
+*.test.py
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 文档 (可选)
+*.md
+!README.md
+
+# 临时文件
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db

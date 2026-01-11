@@ -1,0 +1,106 @@
+# =========================================
+# OneSpace Backend - Docker Compose
+# =========================================
+# 
+# 本地开发使用:
+#   docker-compose up -d
+#
+# 生产环境部署:
+#   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# =========================================
+
+version: '3.8'
+
+services:
+  # FastAPI 后端服务
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: onespace-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=${DEBUG:-false}
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=${DB_USER:-onespace}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-onespace}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-30}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
+      - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:3000"]}
+      - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-60}
+      - UPLOAD_DIR=/app/uploads
+      - MAX_UPLOAD_SIZE_MB=${MAX_UPLOAD_SIZE_MB:-10}
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - onespace-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: onespace-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME:-onespace}
+      - MYSQL_USER=${DB_USER:-onespace}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - onespace-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: 
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: onespace-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - onespace-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+networks:
+  onespace-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:
+  uploads_data:

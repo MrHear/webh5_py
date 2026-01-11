@@ -1,0 +1,55 @@
+# =========================================
+# OneSpace Backend - Production Override
+# =========================================
+#
+# 使用方法:
+#   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# =========================================
+
+version: '3.8'
+
+services:
+  backend:
+    # 生产环境使用预构建镜像
+    image: ${DOCKER_USERNAME}/onespace-backend:latest
+    build: !reset null
+    environment:
+      - DEBUG=false
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mysql:
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

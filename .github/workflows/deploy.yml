@@ -1,0 +1,66 @@
+name: Auto Deploy Backend
+
+on:
+  push:
+    branches: [ "master", "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and Push Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/onespace-backend:latest
+          ${{ secrets.DOCKER_USERNAME }}/onespace-backend:${{ github.sha }}
+
+    - name: Deploy to Server via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          # 停止并删除旧容器 (如果存在)
+          docker stop onespace-backend || true
+          docker rm onespace-backend || true
+          
+          # 强制拉取最新镜像
+          docker pull ${{ secrets.DOCKER_USERNAME }}/onespace-backend:latest
+          
+          # 启动新容器
+          # 注意: 敏感信息通过环境变量传递，不硬编码在脚本中
+          docker run -d \
+            --name onespace-backend \
+            --network onespace-network \
+            -p 8000:8000 \
+            -v /opt/onespace/uploads:/app/uploads \
+            -e DB_HOST=${{ secrets.DB_HOST }} \
+            -e DB_PORT=${{ secrets.DB_PORT }} \
+            -e DB_USER=${{ secrets.DB_USER }} \
+            -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+            -e DB_NAME=${{ secrets.DB_NAME }} \
+            -e JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} \
+            -e ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }} \
+            -e ADMIN_PASSWORD_HASH='${{ secrets.ADMIN_PASSWORD_HASH }}' \
+            -e CORS_ORIGINS='${{ secrets.CORS_ORIGINS }}' \
+            --restart=always \
+            ${{ secrets.DOCKER_USERNAME }}/onespace-backend:latest
+          
+          # 等待容器启动并检查健康状态
+          sleep 5
+          docker ps | grep onespace-backend
+          echo "Deployment completed successfully!"

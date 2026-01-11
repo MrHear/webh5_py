@@ -1,0 +1,60 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Environment variables - 敏感信息绝不提交!
+.env
+.env.local
+.env.production
+.env.*.local
+# 保留示例文件
+!env.example
+
+# 密钥和证书
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# Virtual Environment
+venv/
+env/
+.venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Uploads - 用户上传文件不提交
+uploads/
+
+# 测试
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# 构建产物
+dist/
+build/
+*.egg-info/
+
+# Docker 本地数据卷
+mysql_data/
+redis_data/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
